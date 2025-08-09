@@ -82,29 +82,25 @@ assignment_statement:
             sprintf(buf, "%s = %s;", $1, $3.place);
             emit_indent(buf);
         } else if (sym->type == VECTOR && $3.type == SCALAR) {
-            // Vector = Scalar (broadcast)
-            sprintf(buf, "for(int _i%d = 0; _i%d < %d; _i%d++) {", 
-                       temp_counter, temp_counter, sym->size, temp_counter);
+            // Vector = Scalar
+            sprintf(buf, "for(int _i = 0; _i < %d; _i++) {", sym->size);
             emit_indent(buf);
             indent_level++;
-            sprintf(buf, "%s[_i%d] = %s;", $1, temp_counter, $3.place);
+            sprintf(buf, "%s[_i] = %s;", $1, $3.place);
             emit_indent(buf);
             indent_level--;
             emit_indent("}");
-            temp_counter++;
         } else if (sym->type == VECTOR && $3.type == VECTOR) {
             // Vector = Vector
-            sprintf(buf, "for(int _i%d = 0; _i%d < %d; _i%d++) {", 
-                       temp_counter, temp_counter, sym->size, temp_counter);
+            sprintf(buf, "for(int _i = 0; _i < %d; _i++) {", sym->size);
             emit_indent(buf);
             indent_level++;
-            sprintf(buf, "%s[_i%d] = %s[_i%d];", $1, temp_counter, $3.place, temp_counter);
+            sprintf(buf, "%s[_i] = %s[_i];", $1, $3.place);
             emit_indent(buf);
             indent_level--;
             emit_indent("}");
-            temp_counter++;
         } else if (sym->type == VECTOR && $3.type == VECTOR_CONSTANT) {
-            // Vector = Vector constant
+            // Vector = Vector_Constant
             emit_indent("{");
             indent_level++;
             emit_indent("int _tmp[] = {");
@@ -156,7 +152,6 @@ loop_statement:
 print_statement:
     PRINT STRING COLON print_elements SEMICOLON {
         char *str = $2;
-        // Remove quotes from string
         int len = strlen(str);
         if (len >= 2 && str[0] == '"' && str[len-1] == '"') {
             str[len-1] = '\0';
@@ -212,8 +207,60 @@ print_elements:
     ;
 
 expression:
-    primary_expr { $$ = $1; }
+    primary_expr { 
+        if ($1.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $1.size);
+            for (int i = 0; i < $1.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $1.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            
+            $1.type = VECTOR;
+            $1.place = temp;
+            free($1.values);
+            $1.values = NULL;
+        }
+        $$ = $1; 
+    }
     | expression PLUS expression {
+        if ($1.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            char array_buf[1024];
+            sprintf(array_buf, "int %s[%d] = {", temp, $1.size);
+            for (int i = 0; i < $1.size; i++) {
+                if (i > 0) strcat(array_buf, ", ");
+                char num_str[16];
+                sprintf(num_str, "%d", $1.values[i]);
+                strcat(array_buf, num_str);
+            }
+            strcat(array_buf, "};");
+            emit_indent(array_buf);
+            
+            $1.type = VECTOR;
+            $1.place = temp;
+            free($1.values);
+        }
+        if ($3.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            char array_buf[1024];
+            sprintf(array_buf, "int %s[%d] = {", temp, $3.size);
+            for (int i = 0; i < $3.size; i++) {
+                if (i > 0) strcat(array_buf, ", ");
+                char num_str[16];
+                sprintf(num_str, "%d", $3.values[i]);
+                strcat(array_buf, num_str);
+            }
+            strcat(array_buf, "};");
+            emit_indent(array_buf);
+            
+            $3.type = VECTOR;
+            $3.place = temp;
+            free($3.values);
+        }
+        
         if ($1.type == SCALAR && $3.type == SCALAR) {
             // Scalar + Scalar
             char *temp = new_temp();
@@ -250,6 +297,33 @@ expression:
         }
     }
     | expression MINUS expression {
+        if ($1.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $1.size);
+            for (int i = 0; i < $1.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $1.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            $1.type = VECTOR;
+            $1.place = temp;
+            free($1.values);
+        }
+        if ($3.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $3.size);
+            for (int i = 0; i < $3.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $3.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            $3.type = VECTOR;
+            $3.place = temp;
+            free($3.values);
+        }
+        
         if ($1.type == SCALAR && $3.type == SCALAR) {
             // Scalar - Scalar
             char *temp = new_temp();
@@ -286,6 +360,33 @@ expression:
         }
     }
     | expression MULT expression {
+        if ($1.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $1.size);
+            for (int i = 0; i < $1.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $1.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            $1.type = VECTOR;
+            $1.place = temp;
+            free($1.values);
+        }
+        if ($3.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $3.size);
+            for (int i = 0; i < $3.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $3.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            $3.type = VECTOR;
+            $3.place = temp;
+            free($3.values);
+        }
+        
         if ($1.type == SCALAR && $3.type == SCALAR) {
             // Scalar * Scalar
             char *temp = new_temp();
@@ -322,6 +423,33 @@ expression:
         }
     }
     | expression DIV expression {
+        if ($1.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $1.size);
+            for (int i = 0; i < $1.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $1.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            $1.type = VECTOR;
+            $1.place = temp;
+            free($1.values);
+        }
+        if ($3.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $3.size);
+            for (int i = 0; i < $3.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $3.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            $3.type = VECTOR;
+            $3.place = temp;
+            free($3.values);
+        }
+        
         if ($1.type == SCALAR && $3.type == SCALAR) {
             // Scalar / Scalar
             char *temp = new_temp();
@@ -358,7 +486,33 @@ expression:
         }
     }
     | expression AT expression {
-        // Vector dot product -> scalar
+        if ($1.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $1.size);
+            for (int i = 0; i < $1.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $1.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            $1.type = VECTOR;
+            $1.place = temp;
+            free($1.values);
+        }
+        if ($3.type == VECTOR_CONSTANT) {
+            char *temp = new_temp();
+            sprintf(buf, "int %s[%d] = {", temp, $3.size);
+            for (int i = 0; i < $3.size; i++) {
+                if (i > 0) fprintf(outfile, ", ");
+                fprintf(outfile, "%d", $3.values[i]);
+            }
+            fprintf(outfile, "};\n");
+            emit_indent("");
+            $3.type = VECTOR;
+            $3.place = temp;
+            free($3.values);
+        }
+        
         char *temp = new_temp();
         int size = $1.type == VECTOR ? $1.size : $3.size;
         sprintf(buf, "int %s = 0;", temp);
@@ -398,13 +552,11 @@ primary_expr:
         Symbol *sym = find_symbol($1);
         if (sym && sym->type == VECTOR) {
             if ($3.type == SCALAR) {
-                // Vector[scalar] -> scalar
                 char *temp = new_temp();
                 sprintf(buf, "int %s = %s[%s];", temp, $1, $3.place);
                 emit_indent(buf);
                 $$ = make_scalar(temp);
             } else {
-                // Vector[vector] -> vector
                 char *temp = new_temp();
                 sprintf(buf, "int %s[%d];", temp, $3.size);
                 emit_indent(buf);
@@ -417,11 +569,27 @@ primary_expr:
         free($1);
     }
     | LBRACKET number_list RBRACKET {
-        $$.type = VECTOR_CONSTANT;
+        char *temp = new_temp();
+        
+        char array_buf[1024];
+        sprintf(array_buf, "int %s[%d] = {", temp, $2.count);
+        for (int i = 0; i < $2.count; i++) {
+            if (i > 0) strcat(array_buf, ", ");
+            char num_str[16];
+            sprintf(num_str, "%d", $2.values[i]);
+            strcat(array_buf, num_str);
+        }
+        strcat(array_buf, "};");
+        
+        emit_indent(array_buf);
+        
+        $$.type = VECTOR;       
         $$.size = $2.count;
-        $$.values = $2.values;
-        $$.place = NULL;
+        $$.place = temp;        
+        $$.values = NULL;      
         $$.code = NULL;
+        
+        free($2.values);     
     }
     ;
 
