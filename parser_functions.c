@@ -3,6 +3,13 @@
 #include <string.h>
 #include "parser_functions.h"
 
+FILE *outfile;
+int temp_counter = 0;
+int label_counter = 0;
+int indent_level = 1;
+Symbol symbol_table[100];
+int symbol_count = 0;
+
 void yyerror(const char *s) {
     fprintf(stderr, "Error: %s\n", s);
     exit(1);
@@ -65,4 +72,40 @@ ExprInfo make_vector(char *place, int size) {
     e.code = NULL;
     e.values = NULL;
     return e;
+}
+
+int main(int argc, char **argv) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <input.vl> <output.c>\n", argv[0]);
+        return 1;
+    }
+    
+    yyin = fopen(argv[1], "r");
+    if (!yyin) {
+        fprintf(stderr, "Cannot open input file: %s\n", argv[1]);
+        return 1;
+    }
+    
+    outfile = fopen(argv[2], "w");
+    if (!outfile) {
+        fprintf(stderr, "Cannot open output file: %s\n", argv[2]);
+        return 1;
+    }
+    
+    // Write C header
+    fprintf(outfile, "#include <stdio.h>\n");
+    fprintf(outfile, "#include <stdlib.h>\n\n");
+    fprintf(outfile, "int main() {\n");
+    
+    yyparse();
+    
+    // Write C footer
+    fprintf(outfile, "}\n");
+    
+    fclose(yyin);
+    fclose(outfile);
+    
+    printf("Compilation successful! Output written to %s\n", argv[2]);
+    
+    return 0;
 }

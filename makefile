@@ -38,7 +38,7 @@ clean:
 # Test with example
 test: $(TARGET)
 	@echo "Testing with example.vl..."
-	./$(TARGET) example.vl output.c
+	./$(TARGET) example.vlang output.c
 	@echo "Compiling generated C code..."
 	$(CC) -o example_exec output.c
 	@echo "Running example program:"

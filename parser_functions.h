@@ -7,10 +7,10 @@
 
 extern FILE *yyin;
 
-FILE *outfile;
-int temp_counter = 0;
-int label_counter = 0;
-int indent_level = 1;
+extern FILE *outfile;
+extern int temp_counter;
+extern int label_counter;
+extern int indent_level;
 
 typedef struct {
     char name[64];
@@ -18,8 +18,8 @@ typedef struct {
     int size;
 } Symbol;
 
-Symbol symbol_table[100];
-int symbol_count = 0;
+extern Symbol symbol_table[100];
+extern int symbol_count;
 
 typedef struct {
     char *code;
